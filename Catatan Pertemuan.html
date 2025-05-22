@@ -1,0 +1,687 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Catatan Pertemuan Editable</title>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #ffffff;
+      --text: #333;
+      --border: #e0e0e0;
+      --primary: #bdbdbd;
+      --online-bg: #90caf9;
+      --offline-bg: #a5d6a7;
+      --asinkronus-bg: #ffcc80;
+      --putih-abu-bg: #f5f5f5;
+      --uts-bg: #fff176;
+      --libur-bg: #ef5350;
+      --uas-bg: #b71c1c;
+    }
+    * {
+      box-sizing: border-box;
+    }
+    body {
+      font-family: 'Poppins', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      margin: 0;
+      padding: 1rem;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 1rem;
+      overflow-x: auto;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+      border-radius: 8px;
+      font-size: 0.8rem;
+    }
+    
+    .table-container {
+      overflow-x: auto;
+      margin-top: 1rem;
+    }
+    th, td {
+      border: 1px solid var(--border);
+      padding: 0.6rem;
+      text-align: center;
+      vertical-align: top;
+      font-size: 0.8rem;
+      min-width: 80px;
+    }
+    
+    th:first-child, td:first-child {
+      text-align: left;
+      min-width: 200px;
+      font-size: 0.85rem;
+    }
+    th {
+      background: var(--primary);
+      font-weight: 600;
+    }
+    .Online, .Praktisi { background-color: var(--online-bg); }
+    .Offline { background-color: var(--offline-bg); }
+    .Asinkronus, .Penugasan, .Elearning { background-color: var(--asinkronus-bg); }
+    .none { font-style: italic; font-weight: normal; color: #757575; background-color: var(--putih-abu-bg);}
+    .UTS { background-color: var(--uts-bg); }
+    .Libur { background-color: var(--libur-bg); color: white; }
+    .UAS { background-color: var(--uas-bg); color: white; }
+    .Kosong { background-color: white; }
+    .Tetap { color: #0d47a1; font-weight: bold; }
+    .Dipindahkan { color: #ef6c00; font-weight: bold; }
+    .Dibatalkan { color: #b71c1c; font-weight: bold; }
+    .TildeStatus { color: #9e9e9e; font-weight: normal; }
+    .NoInfo { color: #757575; font-style: italic; font-weight: normal; }
+    .editor {
+      display: none;
+      flex-direction: column;
+      gap: 0.5rem;
+      background: #ffffff;
+      border: 1px solid var(--border);
+      padding: 1rem;
+      position: absolute;
+      z-index: 10;
+      border-radius: 0.5rem;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+      min-width: 250px;
+    }
+    .editor input,
+    .editor select,
+    .editor button {
+      padding: 0.5rem;
+      font-size: 0.875rem;
+      width: 100%;
+      border: 1px solid #ccc;
+      border-radius: 0.25rem;
+      font-family: 'Poppins', sans-serif;
+    }
+    .editor button {
+      background: #3a86ff;
+      color: white;
+      font-weight: bold;
+      border: none;
+      cursor: pointer;
+    }
+    .editor button:hover {
+      background: #2f70d9;
+    }
+    .editable {
+      cursor: pointer;
+      transition: background-color 0.2s;
+    }
+    .editable:hover {
+      opacity: 0.8;
+    }
+    @media (max-width: 768px) {
+      .editor {
+        width: 90%;
+        left: 5% !important;
+        top: 20% !important;
+        position: fixed !important;
+      }
+      
+      .table-container button {
+        font-size: 0.75rem;
+        padding: 0.4rem 0.8rem;
+        margin-bottom: 0.25rem;
+      }
+    }
+  </style>
+</head>
+<body>
+  <h2>Catatan Pertemuan</h2>
+  <div style="margin-bottom: 1rem;">
+    <button onclick="saveData()" style="background: #4CAF50; color: white; padding: 0.5rem 1rem; border: none; border-radius: 0.25rem; cursor: pointer; margin-right: 0.5rem; font-family: 'Poppins', sans-serif;">💾 Simpan Data</button>
+    <button onclick="loadData()" style="background: #2196F3; color: white; padding: 0.5rem 1rem; border: none; border-radius: 0.25rem; cursor: pointer; margin-right: 0.5rem; font-family: 'Poppins', sans-serif;">📂 Muat Data</button>
+    <button onclick="exportData()" style="background: #FF9800; color: white; padding: 0.5rem 1rem; border: none; border-radius: 0.25rem; cursor: pointer; margin-right: 0.5rem; font-family: 'Poppins', sans-serif;">📤 Export JSON</button>
+    <input type="file" id="fileInput" accept=".json" style="display: none;" onchange="importData(event)">
+    <button onclick="document.getElementById('fileInput').click()" style="background: #9C27B0; color: white; padding: 0.5rem 1rem; border: none; border-radius: 0.25rem; cursor: pointer; margin-right: 0.5rem; font-family: 'Poppins', sans-serif;">📥 Import JSON</button>
+    <button onclick="downloadTableImage()" style="background: #E91E63; color: white; padding: 0.5rem 1rem; border: none; border-radius: 0.25rem; cursor: pointer; font-family: 'Poppins', sans-serif;">📷 Download Gambar</button>
+  </div>
+  <div class="table-container">
+    <table>
+    <thead>
+      <tr>
+        <th>Mata Kuliah</th>
+        <th colspan="16">Pertemuan</th>
+      </tr>
+      <tr>
+        <th></th>
+        <th>1</th><th>2</th><th>3</th><th>4</th><th>5</th>
+        <th>6</th><th>7</th><th>8</th><th>9</th><th>10</th>
+        <th>11</th><th>12</th><th>13</th><th>14</th><th>15</th><th>16</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>Agama Hindu</td>
+        <td class="editable"></td>
+        <td class="editable"></td>
+        <td class="editable"></td>
+        <td class="editable"></td>
+        <td class="editable"></td>
+        <td class="editable"></td>
+        <td class="editable"></td>
+        <td class="editable"></td>
+        <td class="editable"></td>
+        <td class="editable"></td>
+        <td class="editable"></td>
+        <td class="editable"></td>
+        <td class="editable"></td>
+        <td class="editable"></td>
+        <td class="editable"></td>
+        <td class="editable"></td>
+      </tr>
+      <tr>
+        <td>Bahasa Indonesia</td>
+        <td class="editable"></td>
+        <td class="editable"></td>
+        <td class="editable"></td>
+        <td class="editable"></td>
+        <td class="editable"></td>
+        <td class="editable"></td>
+        <td class="editable"></td>
+        <td class="editable"></td>
+        <td class="editable"></td>
+        <td class="editable"></td>
+        <td class="editable"></td>
+        <td class="editable"></td>
+        <td class="editable"></td>
+        <td class="editable"></td>
+        <td class="editable"></td>
+        <td class="editable"></td>
+      </tr>
+      <tr>
+        <td>Didaktik Metodik Pembelajaran Informatika</td>
+        <td class="editable"></td>
+        <td class="editable"></td>
+        <td class="editable"></td>
+        <td class="editable"></td>
+        <td class="editable"></td>
+        <td class="editable"></td>
+        <td class="editable"></td>
+        <td class="editable"></td>
+        <td class="editable"></td>
+        <td class="editable"></td>
+        <td class="editable"></td>
+        <td class="editable"></td>
+        <td class="editable"></td>
+        <td class="editable"></td>
+        <td class="editable"></td>
+        <td class="editable"></td>
+      </tr>
+      <tr>
+        <td>Asesmen dan Evaluasi Pembelajaran Teknik Informatika</td>
+        <td class="editable"></td>
+        <td class="editable"></td>
+        <td class="editable"></td>
+        <td class="editable"></td>
+        <td class="editable"></td>
+        <td class="editable"></td>
+        <td class="editable"></td>
+        <td class="editable"></td>
+        <td class="editable"></td>
+        <td class="editable"></td>
+        <td class="editable"></td>
+        <td class="editable"></td>
+        <td class="editable"></td>
+        <td class="editable"></td>
+        <td class="editable"></td>
+        <td class="editable"></td>
+      </tr>
+      <tr>
+        <td>Sistem Informasi</td>
+        <td class="editable"></td>
+        <td class="editable"></td>
+        <td class="editable"></td>
+        <td class="editable"></td>
+        <td class="editable"></td>
+        <td class="editable"></td>
+        <td class="editable"></td>
+        <td class="editable"></td>
+        <td class="editable"></td>
+        <td class="editable"></td>
+        <td class="editable"></td>
+        <td class="editable"></td>
+        <td class="editable"></td>
+        <td class="editable"></td>
+        <td class="editable"></td>
+        <td class="editable"></td>
+      </tr>
+      <tr>
+        <td>Algoritma dan Pemrograman</td>
+        <td class="editable"></td>
+        <td class="editable"></td>
+        <td class="editable"></td>
+        <td class="editable"></td>
+        <td class="editable"></td>
+        <td class="editable"></td>
+        <td class="editable"></td>
+        <td class="editable"></td>
+        <td class="editable"></td>
+        <td class="editable"></td>
+        <td class="editable"></td>
+        <td class="editable"></td>
+        <td class="editable"></td>
+        <td class="editable"></td>
+        <td class="editable"></td>
+        <td class="editable"></td>
+      </tr>
+      <tr>
+        <td>Belajar dan Pembelajaran</td>
+        <td class="editable"></td>
+        <td class="editable"></td>
+        <td class="editable"></td>
+        <td class="editable"></td>
+        <td class="editable"></td>
+        <td class="editable"></td>
+        <td class="editable"></td>
+        <td class="editable"></td>
+        <td class="editable"></td>
+        <td class="editable"></td>
+        <td class="editable"></td>
+        <td class="editable"></td>
+        <td class="editable"></td>
+        <td class="editable"></td>
+        <td class="editable"></td>
+        <td class="editable"></td>
+      </tr>
+      <tr>
+        <td>Statistika Dasar</td>
+        <td class="editable"></td>
+        <td class="editable"></td>
+        <td class="editable"></td>
+        <td class="editable"></td>
+        <td class="editable"></td>
+        <td class="editable"></td>
+        <td class="editable"></td>
+        <td class="editable"></td>
+        <td class="editable"></td>
+        <td class="editable"></td>
+        <td class="editable"></td>
+        <td class="editable"></td>
+        <td class="editable"></td>
+        <td class="editable"></td>
+        <td class="editable"></td>
+        <td class="editable"></td>
+      </tr>
+      <tr>
+        <td>UI/UX</td>
+        <td class="editable"></td>
+        <td class="editable"></td>
+        <td class="editable"></td>
+        <td class="editable"></td>
+        <td class="editable"></td>
+        <td class="editable"></td>
+        <td class="editable"></td>
+        <td class="editable"></td>
+        <td class="editable"></td>
+        <td class="editable"></td>
+        <td class="editable"></td>
+        <td class="editable"></td>
+        <td class="editable"></td>
+        <td class="editable"></td>
+        <td class="editable"></td>
+        <td class="editable"></td>
+      </tr>
+      <tr>
+        <td>Basis Data</td>
+        <td class="editable"></td>
+        <td class="editable"></td>
+        <td class="editable"></td>
+        <td class="editable"></td>
+        <td class="editable"></td>
+        <td class="editable"></td>
+        <td class="editable"></td>
+        <td class="editable"></td>
+        <td class="editable"></td>
+        <td class="editable"></td>
+        <td class="editable"></td>
+        <td class="editable"></td>
+        <td class="editable"></td>
+        <td class="editable"></td>
+        <td class="editable"></td>
+        <td class="editable"></td>
+      </tr>
+    </tbody>
+      </table>
+  </div>
+
+  <div id="editor" class="editor">
+    <label>Jenis:
+      <select id="jenis">
+        <option value="Kosong">Kosong</option>
+        <option value="none">none</option>
+        <option value="Online">Online</option>
+        <option value="Praktisi">Praktisi</option>
+        <option value="Offline">Offline</option>
+        <option value="Asinkronus">Asinkronus</option>
+        <option value="Penugasan">Penugasan</option>
+        <option value="Elearning">E-learning</option>
+        <option value="UTS">UTS</option>
+        <option value="Libur">Libur</option>
+        <option value="UAS">UAS</option>
+      </select>
+    </label>
+    <label>Status:
+      <select id="status">
+        <option value="Tetap">Tetap</option>
+        <option value="Dipindahkan">Dipindahkan</option>
+        <option value="Dibatalkan">Dibatalkan</option>
+        <option value="~">~</option>
+        <option value="NoInfo">No Info</option>
+      </select>
+    </label>
+    <label>Tanggal:
+      <input type="date" id="tanggal">
+    </label>
+    <label>Jam:
+      <input type="time" id="jam">
+    </label>
+    <button onclick="applyEdit()">Simpan</button>
+    <button onclick="closeEditor()" style="background: #666; margin-top: 0.25rem;">Batal</button>
+  </div>
+
+  <script>
+    const editor = document.getElementById('editor');
+    let currentCell = null;
+
+    // Load data on page load
+    window.addEventListener('load', () => {
+      loadData();
+    });
+
+    document.querySelectorAll('.editable').forEach(cell => {
+      cell.addEventListener('click', () => {
+        currentCell = cell;
+        const rect = cell.getBoundingClientRect();
+        editor.style.left = `${rect.left + window.scrollX}px`;
+        editor.style.top = `${rect.bottom + window.scrollY + 5}px`;
+        editor.style.display = 'flex';
+        fillEditorFormFromCell(cell);
+      });
+    });
+
+    function fillEditorFormFromCell(cell) {
+      const jenisSelect = document.getElementById('jenis');
+      const statusSelect = document.getElementById('status');
+      const tanggalInput = document.getElementById('tanggal');
+      const jamInput = document.getElementById('jam');
+
+      // Reset form
+      jenisSelect.value = 'Kosong';
+      statusSelect.value = 'Tetap';
+      tanggalInput.value = '';
+      jamInput.value = '';
+
+      if (!cell || !cell.innerHTML.trim()) {
+        return;
+      }
+
+      if (cell.textContent.trim() === '~') {
+        jenisSelect.value = 'none';
+        statusSelect.value = '~';
+        return;
+      }
+
+      const tempDiv = document.createElement('div');
+      tempDiv.innerHTML = cell.innerHTML;
+
+      const jenisElem = tempDiv.querySelector('b');
+      const statusElem = tempDiv.querySelector('span');
+
+      if (jenisElem) {
+        jenisSelect.value = jenisElem.textContent;
+      }
+
+      if (statusElem) {
+        if (statusElem.classList.contains('NoInfo')) {
+          statusSelect.value = 'NoInfo';
+        } else if (statusElem.textContent === '~') {
+          statusSelect.value = '~';
+        } else {
+          statusSelect.value = statusElem.textContent;
+        }
+      }
+    }
+
+    function applyEdit() {
+      const jenis = document.getElementById('jenis').value;
+      const status = document.getElementById('status').value;
+      const tanggal = document.getElementById('tanggal').value;
+      const jam = document.getElementById('jam').value;
+
+      if (!currentCell) return;
+
+      // Clear existing classes and add new ones
+      currentCell.className = `editable ${jenis}`;
+
+      if (jenis === 'Kosong') {
+        currentCell.innerHTML = '';
+        closeEditor();
+        autoSave();
+        return;
+      }
+
+      if (jenis === 'none' && status === '~') {
+        currentCell.innerHTML = '~';
+        closeEditor();
+        autoSave();
+        return;
+      }
+
+      let statusClass = status;
+      if (status === '~') statusClass = 'TildeStatus';
+      if (status === 'NoInfo') statusClass = 'NoInfo';
+
+      const formattedDate = formatDate(tanggal);
+      const dateTimeInfo = tanggal ? `<br><i>${formattedDate}${jam ? `<br>Jam: ${jam}` : ''}</i>` : '';
+
+      const html = `
+        <b>${jenis}</b><br>
+        • <span class="${statusClass}">${status === 'NoInfo' ? 'No Info' : status}</span>
+        ${dateTimeInfo}
+      `;
+
+      currentCell.innerHTML = html;
+      closeEditor();
+      autoSave();
+    }
+
+    function closeEditor() {
+      editor.style.display = 'none';
+      currentCell = null;
+    }
+
+    function formatDate(dateStr) {
+      if (!dateStr) return '';
+      
+      try {
+        const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+        const date = new Date(dateStr);
+        return date.toLocaleDateString('id-ID', options);
+      } catch (e) {
+        return dateStr;
+      }
+    }
+
+    // Auto-save functionality
+    function autoSave() {
+      saveData();
+      showNotification('Data otomatis tersimpan!', 'success');
+    }
+
+    // Save data to localStorage
+    function saveData() {
+      const tableData = {};
+      const rows = document.querySelectorAll('tbody tr');
+      
+      rows.forEach((row, rowIndex) => {
+        const matkulName = row.querySelector('td:first-child').textContent;
+        const cells = row.querySelectorAll('.editable');
+        
+        tableData[matkulName] = {};
+        cells.forEach((cell, cellIndex) => {
+          const pertemuan = cellIndex + 1;
+          tableData[matkulName][`pertemuan_${pertemuan}`] = {
+            html: cell.innerHTML,
+            className: cell.className
+          };
+        });
+      });
+      
+      localStorage.setItem('catatanPertemuan', JSON.stringify(tableData));
+      showNotification('Data berhasil disimpan!', 'success');
+    }
+
+    // Load data from localStorage
+    function loadData() {
+      const savedData = localStorage.getItem('catatanPertemuan');
+      if (!savedData) {
+        showNotification('Tidak ada data tersimpan', 'info');
+        return;
+      }
+
+      try {
+        const tableData = JSON.parse(savedData);
+        const rows = document.querySelectorAll('tbody tr');
+        
+        rows.forEach((row) => {
+          const matkulName = row.querySelector('td:first-child').textContent;
+          const cells = row.querySelectorAll('.editable');
+          
+          if (tableData[matkulName]) {
+            cells.forEach((cell, cellIndex) => {
+              const pertemuan = cellIndex + 1;
+              const cellData = tableData[matkulName][`pertemuan_${pertemuan}`];
+              
+              if (cellData) {
+                cell.innerHTML = cellData.html || '';
+                cell.className = cellData.className || 'editable';
+              }
+            });
+          }
+        });
+        
+        showNotification('Data berhasil dimuat!', 'success');
+      } catch (error) {
+        showNotification('Error memuat data: ' + error.message, 'error');
+      }
+    }
+
+    // Export data as JSON file
+    function exportData() {
+      const tableData = {};
+      const rows = document.querySelectorAll('tbody tr');
+      
+      rows.forEach((row) => {
+        const matkulName = row.querySelector('td:first-child').textContent;
+        const cells = row.querySelectorAll('.editable');
+        
+        tableData[matkulName] = {};
+        cells.forEach((cell, cellIndex) => {
+          const pertemuan = cellIndex + 1;
+          tableData[matkulName][`pertemuan_${pertemuan}`] = {
+            html: cell.innerHTML,
+            className: cell.className
+          };
+        });
+      });
+      
+      const dataStr = JSON.stringify(tableData, null, 2);
+      const dataBlob = new Blob([dataStr], {type: 'application/json'});
+      const url = URL.createObjectURL(dataBlob);
+      
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `catatan-pertemuan-${new Date().toISOString().split('T')[0]}.json`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+      
+      showNotification('Data berhasil diexport!', 'success');
+    }
+
+    // Import data from JSON file
+    function importData(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        try {
+          const tableData = JSON.parse(e.target.result);
+          const rows = document.querySelectorAll('tbody tr');
+          
+          rows.forEach((row) => {
+            const matkulName = row.querySelector('td:first-child').textContent;
+            const cells = row.querySelectorAll('.editable');
+            
+            if (tableData[matkulName]) {
+              cells.forEach((cell, cellIndex) => {
+                const pertemuan = cellIndex + 1;
+                const cellData = tableData[matkulName][`pertemuan_${pertemuan}`];
+                
+                if (cellData) {
+                  cell.innerHTML = cellData.html || '';
+                  cell.className = cellData.className || 'editable';
+                }
+              });
+            }
+          });
+          
+          // Save imported data to localStorage
+          localStorage.setItem('catatanPertemuan', JSON.stringify(tableData));
+          showNotification('Data berhasil diimport!', 'success');
+        } catch (error) {
+          showNotification('Error mengimport data: ' + error.message, 'error');
+        }
+      };
+      reader.readAsText(file);
+    }
+
+    // Show notification
+    function showNotification(message, type = 'info') {
+      const notification = document.createElement('div');
+      notification.textContent = message;
+      notification.style.cssText = `
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        padding: 12px 20px;
+        border-radius: 6px;
+        color: white;
+        font-weight: bold;
+        z-index: 1000;
+        font-family: 'Poppins', sans-serif;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        ${type === 'success' ? 'background: #4CAF50;' : 
+          type === 'error' ? 'background: #f44336;' : 
+          'background: #2196F3;'}
+      `;
+      
+      document.body.appendChild(notification);
+      
+      setTimeout(() => {
+        notification.remove();
+      }, 3000);
+    }
+
+    document.addEventListener('click', (e) => {
+      if (!editor.contains(e.target) && !e.target.classList.contains('editable')) {
+        closeEditor();
+      }
+    });
+
+    // Close editor on Escape key
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') {
+        closeEditor();
+      }
+    });
+  </script>
+</body>
+</html>
